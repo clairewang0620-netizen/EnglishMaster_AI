@@ -1,0 +1,7 @@
+{
+  "name": "Lumière English",
+  "description": "A comprehensive English learning platform featuring spaced repetition, AI tutoring, and systematic vocabulary training.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

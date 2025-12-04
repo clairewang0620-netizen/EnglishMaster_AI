@@ -40,8 +40,7 @@ export const playTextToSpeech = async (text: string, voiceName: string = 'Kore')
   }
 
   try {
-    // ⚠️ IMPORTANT: Calling /api/proxy (without .js extension) 
-    // This assumes Vercel correctly maps /api/proxy to api/proxy.js via file system routing or vercel.json
+    // ✅ 修复：去掉 .js 后缀
     const response = await fetch('/api/proxy', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -50,7 +49,9 @@ export const playTextToSpeech = async (text: string, voiceName: string = 'Kore')
 
     if (!response.ok) {
         const errText = await response.text();
-        throw new Error(`Server Error (${response.status}): ${errText}`);
+        // 增加更详细的错误日志
+        console.error("API Error Response:", errText);
+        throw new Error(`Server Error (${response.status}): ${errText.substring(0, 50)}...`);
     }
     
     const data = await response.json();
@@ -63,7 +64,7 @@ export const playTextToSpeech = async (text: string, voiceName: string = 'Kore')
 
   } catch (error: any) {
     console.error("Audio Error:", error);
-    alert("❌ Audio Error: " + error.message);
+    alert("Audio Error: " + error.message);
   }
 };
 
@@ -76,6 +77,7 @@ function playBuffer(ctx: AudioContext, buffer: AudioBuffer) {
 
 export const generateExplanation = async (phrase: string): Promise<string> => {
     try {
+        // ✅ 修复：去掉 .js 后缀
         const response = await fetch('/api/proxy', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

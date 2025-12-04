@@ -1,6 +1,3 @@
-// services/geminiService.ts
-
-// 1. 音频缓存
 const audioCache = new Map<string, AudioBuffer>();
 let audioContext: AudioContext | null = null;
 
@@ -22,23 +19,13 @@ function createAudioBufferFromPCM(data: Uint8Array, ctx: AudioContext, sampleRat
   return buffer;
 }
 
-// 🛠️ 修复核心：增强版 Base64 解码器
 function decodeBase64(base64: string) {
-  // 1. 替换 URL 安全字符 (- 转 +, _ 转 /)
   let cleanBase64 = base64.replace(/-/g, '+').replace(/_/g, '/');
-  
-  // 2. 补全 padding (=)
-  while (cleanBase64.length % 4) {
-    cleanBase64 += '=';
-  }
-
-  // 3. 解码
+  while (cleanBase64.length % 4) { cleanBase64 += '='; }
   const binaryString = atob(cleanBase64);
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
+  for (let i = 0; i < len; i++) { bytes[i] = binaryString.charCodeAt(i); }
   return bytes;
 }
 
@@ -53,6 +40,8 @@ export const playTextToSpeech = async (text: string, voiceName: string = 'Kore')
   }
 
   try {
+    // ⚠️ IMPORTANT: Calling /api/proxy (without .js extension) 
+    // This assumes Vercel correctly maps /api/proxy to api/proxy.js via file system routing or vercel.json
     const response = await fetch('/api/proxy', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -61,26 +50,20 @@ export const playTextToSpeech = async (text: string, voiceName: string = 'Kore')
 
     if (!response.ok) {
         const errText = await response.text();
-        throw new Error(`Server Error: ${response.status} - ${errText}`);
+        throw new Error(`Server Error (${response.status}): ${errText}`);
     }
     
     const data = await response.json();
     if (data.error) throw new Error(data.error);
-    if (!data.audio) throw new Error("No audio data received");
 
-    // 调用增强版解码
     const pcmData = decodeBase64(data.audio);
     const audioBuffer = createAudioBufferFromPCM(pcmData, ctx, 24000);
-    
     audioCache.set(cacheKey, audioBuffer);
     playBuffer(ctx, audioBuffer);
 
   } catch (error: any) {
     console.error("Audio Error:", error);
-    // 这里不再弹窗打扰用户，改为控制台输出，除非是严重错误
-    if (error.message.includes("atob")) {
-        alert("Audio decoding failed. Please try again.");
-    }
+    alert("❌ Audio Error: " + error.message);
   }
 };
 

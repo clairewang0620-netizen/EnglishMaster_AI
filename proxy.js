@@ -1,7 +1,7 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 
 export default async function handler(req, res) {
-  // CORS
+  // 1. CORS 设置 (允许前端跨域访问)
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -12,6 +12,7 @@ export default async function handler(req, res) {
     return;
   }
 
+  // 2. 检查 API Key
   const apiKey = process.env.API_KEY;
   if (!apiKey) {
     return res.status(500).json({ error: "Server API_KEY missing" });
@@ -45,7 +46,9 @@ export default async function handler(req, res) {
     }
 
     return res.status(400).json({ error: "Invalid type" });
+
   } catch (error) {
+    console.error(error);
     return res.status(500).json({ error: error.message });
   }
 }

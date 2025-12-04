@@ -40,13 +40,18 @@ export const playTextToSpeech = async (text: string, voiceName: string = 'Kore')
   }
 
   try {
-    const response = await fetch('/api/proxy', {
+    // 这里的地址必须和你建立的文件名完全一致！
+    const response = await fetch('/api/proxy.js', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'tts', text, voice: voiceName })
     });
 
-    if (!response.ok) throw new Error("Network response was not ok");
+    if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Server Error: ${response.status} ${response.statusText} - ${errText}`);
+    }
+    
     const data = await response.json();
     if (data.error) throw new Error(data.error);
 
@@ -70,7 +75,7 @@ function playBuffer(ctx: AudioContext, buffer: AudioBuffer) {
 
 export const generateExplanation = async (phrase: string): Promise<string> => {
     try {
-        const response = await fetch('/api/proxy', {
+        const response = await fetch('/api/proxy.js', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: 'explain', text: phrase })

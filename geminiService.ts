@@ -19,26 +19,13 @@ function createAudioBufferFromPCM(data: Uint8Array, ctx: AudioContext, sampleRat
   return buffer;
 }
 
-// 🛠️ 核心修复：超强 Base64 清洗器
 function decodeBase64(base64: string) {
-  // 1. 移除所有非 Base64 字符（空格、换行符等），这是报错的根源
-  let clean = base64.replace(/[^A-Za-z0-9+/=_]/g, '');
-  
-  // 2. 替换 URL 安全字符
-  clean = clean.replace(/-/g, '+').replace(/_/g, '/');
-  
-  // 3. 补全末尾的 padding (=)
-  while (clean.length % 4) {
-    clean += '=';
-  }
-
-  // 4. 安全解码
-  const binaryString = atob(clean);
+  let cleanBase64 = base64.replace(/-/g, '+').replace(/_/g, '/');
+  while (cleanBase64.length % 4) { cleanBase64 += '='; }
+  const binaryString = atob(cleanBase64);
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
+  for (let i = 0; i < len; i++) { bytes[i] = binaryString.charCodeAt(i); }
   return bytes;
 }
 
@@ -53,7 +40,7 @@ export const playTextToSpeech = async (text: string, voiceName: string = 'Kore')
   }
 
   try {
-    // 这里的地址必须和你 vercel 里的 api 文件路径一致
+    // ✅ 修复核心：去掉 .js 后缀，只用 /api/proxy
     const response = await fetch('/api/proxy', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -61,19 +48,13 @@ export const playTextToSpeech = async (text: string, voiceName: string = 'Kore')
     });
 
     if (!response.ok) {
-        // 如果是 429 (Too Many Requests)，提示用户慢一点
-        if (response.status === 429) {
-            throw new Error("Too fast! Please wait a moment.");
-        }
         const errText = await response.text();
-        throw new Error(`Server Error (${response.status}): ${errText}`);
+        throw new Error(`Server Error (${response.status}): ${errText.substring(0, 100)}...`);
     }
     
     const data = await response.json();
     if (data.error) throw new Error(data.error);
-    if (!data.audio) throw new Error("Empty audio data received");
 
-    // 解码并播放
     const pcmData = decodeBase64(data.audio);
     const audioBuffer = createAudioBufferFromPCM(pcmData, ctx, 24000);
     audioCache.set(cacheKey, audioBuffer);
@@ -81,10 +62,7 @@ export const playTextToSpeech = async (text: string, voiceName: string = 'Kore')
 
   } catch (error: any) {
     console.error("Audio Error:", error);
-    // 只在非 Base64 错误时弹窗，避免打断体验
-    if (!error.message.includes("atob")) {
-        alert("⚠️ Audio Error: " + error.message);
-    }
+    alert("Audio Error: " + error.message);
   }
 };
 
@@ -97,6 +75,7 @@ function playBuffer(ctx: AudioContext, buffer: AudioBuffer) {
 
 export const generateExplanation = async (phrase: string): Promise<string> => {
     try {
+        // ✅ 修复核心：去掉 .js 后缀
         const response = await fetch('/api/proxy', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

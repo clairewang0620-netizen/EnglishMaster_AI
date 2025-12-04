@@ -1,3 +1,6 @@
+// services/geminiService.ts
+
+// 1. 音频缓存
 const audioCache = new Map<string, AudioBuffer>();
 let audioContext: AudioContext | null = null;
 
@@ -19,8 +22,18 @@ function createAudioBufferFromPCM(data: Uint8Array, ctx: AudioContext, sampleRat
   return buffer;
 }
 
+// 🛠️ 修复核心：增强版 Base64 解码器
 function decodeBase64(base64: string) {
-  const binaryString = atob(base64);
+  // 1. 替换 URL 安全字符 (- 转 +, _ 转 /)
+  let cleanBase64 = base64.replace(/-/g, '+').replace(/_/g, '/');
+  
+  // 2. 补全 padding (=)
+  while (cleanBase64.length % 4) {
+    cleanBase64 += '=';
+  }
+
+  // 3. 解码
+  const binaryString = atob(cleanBase64);
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
   for (let i = 0; i < len; i++) {
@@ -46,35 +59,28 @@ export const playTextToSpeech = async (text: string, voiceName: string = 'Kore')
       body: JSON.stringify({ type: 'tts', text, voice: voiceName })
     });
 
-    // --- 诊断代码开始 ---
     if (!response.ok) {
-        // 读取服务器返回的具体错误文字
-        const errorText = await response.text();
-        let errorMessage = `Status: ${response.status} (${response.statusText})`;
-        
-        // 尝试解析 JSON 错误
-        try {
-            const errorJson = JSON.parse(errorText);
-            if (errorJson.error) errorMessage = errorJson.error;
-        } catch (e) {
-            if (errorText) errorMessage += ` - ${errorText.substring(0, 100)}`;
-        }
-        
-        throw new Error(errorMessage);
+        const errText = await response.text();
+        throw new Error(`Server Error: ${response.status} - ${errText}`);
     }
-    // --- 诊断代码结束 ---
     
     const data = await response.json();
     if (data.error) throw new Error(data.error);
+    if (!data.audio) throw new Error("No audio data received");
 
+    // 调用增强版解码
     const pcmData = decodeBase64(data.audio);
     const audioBuffer = createAudioBufferFromPCM(pcmData, ctx, 24000);
+    
     audioCache.set(cacheKey, audioBuffer);
     playBuffer(ctx, audioBuffer);
 
   } catch (error: any) {
-    console.error("Audio Error Details:", error);
-    alert("❌ Error: " + error.message);
+    console.error("Audio Error:", error);
+    // 这里不再弹窗打扰用户，改为控制台输出，除非是严重错误
+    if (error.message.includes("atob")) {
+        alert("Audio decoding failed. Please try again.");
+    }
   }
 };
 

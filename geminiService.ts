@@ -40,17 +40,29 @@ export const playTextToSpeech = async (text: string, voiceName: string = 'Kore')
   }
 
   try {
-    // 这里的地址必须和你建立的文件名完全一致！
-    const response = await fetch('/api/proxy.js', {
+    const response = await fetch('/api/proxy', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'tts', text, voice: voiceName })
     });
 
+    // --- 诊断代码开始 ---
     if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Server Error: ${response.status} ${response.statusText} - ${errText}`);
+        // 读取服务器返回的具体错误文字
+        const errorText = await response.text();
+        let errorMessage = `Status: ${response.status} (${response.statusText})`;
+        
+        // 尝试解析 JSON 错误
+        try {
+            const errorJson = JSON.parse(errorText);
+            if (errorJson.error) errorMessage = errorJson.error;
+        } catch (e) {
+            if (errorText) errorMessage += ` - ${errorText.substring(0, 100)}`;
+        }
+        
+        throw new Error(errorMessage);
     }
+    // --- 诊断代码结束 ---
     
     const data = await response.json();
     if (data.error) throw new Error(data.error);
@@ -61,8 +73,8 @@ export const playTextToSpeech = async (text: string, voiceName: string = 'Kore')
     playBuffer(ctx, audioBuffer);
 
   } catch (error: any) {
-    console.error("Audio Error:", error);
-    alert("Audio Error: " + error.message);
+    console.error("Audio Error Details:", error);
+    alert("❌ Error: " + error.message);
   }
 };
 
@@ -75,7 +87,7 @@ function playBuffer(ctx: AudioContext, buffer: AudioBuffer) {
 
 export const generateExplanation = async (phrase: string): Promise<string> => {
     try {
-        const response = await fetch('/api/proxy.js', {
+        const response = await fetch('/api/proxy', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: 'explain', text: phrase })
